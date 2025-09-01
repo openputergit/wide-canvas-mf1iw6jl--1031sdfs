@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Converter Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .drag-area {
+            border: 2px dashed #4B5563;
+            transition: all 0.3s ease;
+        }
+        .drag-area.active {
+            border-color: #60A5FA;
+            background-color: #EFF6FF;
+        }
+        @keyframes progress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        .progress-animation {
+            animation: progress 2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">File Converter Pro</h1>
+            <p class="text-gray-600">Convert between PDF, Word, and Images seamlessly</p>
+            <button id="themeToggle" class="mt-4 px-4 py-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors">
+                <i class="bi bi-moon-stars"></i> Toggle Theme
+            </button>
+        </header>
+
+        <!-- Main Content -->
+        <div class="max-w-2xl mx-auto">
+            <!-- File Upload Area -->
+            <div id="dropArea" class="drag-area rounded-lg p-8 text-center mb-8">
+                <i class="bi bi-cloud-upload text-5xl text-gray-500 mb-4"></i>
+                <h3 class="text-lg font-semibold mb-2">Drag & Drop Files Here</h3>
+                <p class="text-gray-500 mb-4">Or</p>
+                <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.jpg,.jpeg,.png">
+                <button onclick="document.getElementById('fileInput').click()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors">
+                    Browse Files
+                </button>
+                <p class="text-sm text-gray-500 mt-4">Maximum file size: 20MB</p>
+            </div>
+
+            <!-- Conversion Options -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <button class="conversion-btn bg-white hover:bg-gray-50 border border-gray-200 p-4 rounded-lg shadow-sm transition-all">
+                    <i class="bi bi-file-pdf text-red-500 text-2xl mb-2"></i>
+                    <span class="block">PDF to Word</span>
+                </button>
+                <button class="conversion-btn bg-white hover:bg-gray-50 border border-gray-200 p-4 rounded-lg shadow-sm transition-all">
+                    <i class="bi bi-file-word text-blue-500 text-2xl mb-2"></i>
+                    <span class="block">Word to PDF</span>
+                </button>
+                <button class="conversion-btn bg-white hover:bg-gray-50 border border-gray-200 p-4 rounded-lg shadow-sm transition-all">
+                    <i class="bi bi-image text-green-500 text-2xl mb-2"></i>
+                    <span class="block">Image to PDF</span>
+                </button>
+                <button class="conversion-btn bg-white hover:bg-gray-50 border border-gray-200 p-4 rounded-lg shadow-sm transition-all">
+                    <i class="bi bi-file-earmark-image text-purple-500 text-2xl mb-2"></i>
+                    <span class="block">PDF to Image</span>
+                </button>
+            </div>
+
+            <!-- Progress Bar (Hidden by default) -->
+            <div id="progressContainer" class="hidden">
+                <div class="bg-gray-200 rounded-full h-4 mb-4">
+                    <div id="progressBar" class="bg-blue-500 h-4 rounded-full progress-animation" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-center text-gray-600">Converting... 0%</p>
+            </div>
+
+            <!-- Download Section (Hidden by default) -->
+            <div id="downloadSection" class="hidden text-center">
+                <button id="downloadBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition-colors">
+                    <i class="bi bi-download mr-2"></i>Download Converted File
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const body = document.body;
+        
+        themeToggle.addEventListener('click', () => {
+            body.classList.toggle('dark');
+            if (body.classList.contains('dark')) {
+                body.classList.remove('bg-gray-50');
+                body.classList.add('bg-gray-900');
+                themeToggle.innerHTML = '<i class="bi bi-sun"></i> Toggle Theme';
+            } else {
+                body.classList.remove('bg-gray-900');
+                body.classList.add('bg-gray-50');
+                themeToggle.innerHTML = '<i class="bi bi-moon-stars"></i> Toggle Theme';
+            }
+        });
+
+        // Drag and Drop functionality
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropArea.classList.add('active');
+        }
+
+        function unhighlight() {
+            dropArea.classList.remove('active');
+        }
+
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            if (files[0].size > 20 * 1024 * 1024) {
+                alert('File size exceeds 20MB limit');
+                return;
+            }
+            
+            // Show progress
+            document.getElementById('progressContainer').classList.remove('hidden');
+            simulateConversion();
+        }
+
+        function simulateConversion() {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            let progress = 0;
+            
+            const interval = setInterval(() => {
+                progress += 5;
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `Converting... ${progress}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    document.getElementById('downloadSection').classList.remove('hidden');
+                    progressText.textContent = 'Conversion Complete!';
+                }
+            }, 100);
+        }
+
+        // Download button click handler
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            // In a real implementation, this would download the converted file
+            alert('In a real implementation, this would download your converted file.');
+            
+            // Reset UI
+            document.getElementById('progressContainer').classList.add('hidden');
+            document.getElementById('downloadSection').classList.add('hidden');
+            document.getElementById('progressBar').style.width = '0%';
+        });
+
+        // Conversion button click handlers
+        document.querySelectorAll('.conversion-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
